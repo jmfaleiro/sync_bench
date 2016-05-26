@@ -69,8 +69,8 @@ void bench::do_run(uint64_t iterations, uint64_t **latencies, double *throughput
                 latencies[i] = _runnables[i]->get_latency();
         
         end_time = diff_time(end_time, start_time);
-        elapsed_milli = 1000.0*end_time.tv_sec + end_time.tv_nsec/1000000.0;
-        *throughput = iterations/elapsed_milli;
+        elapsed_milli = end_time.tv_sec + (1.0*end_time.tv_nsec)/1000000000.0;
+        *throughput = (1.0*iterations*_args._ncpus)/elapsed_milli;
 }
 
 results bench::execute()
@@ -83,7 +83,7 @@ results bench::execute()
         memset(latencies, 0x0, sizeof(uint64_t*)*_args._ncpus);
         
         do_run(1000, latencies, &throughput);
-        do_run(1000000, latencies, &throughput);
+        do_run(100000, latencies, &throughput);
         ret._throughput = throughput;
         ret._latency = latencies;
         return ret;
@@ -141,8 +141,9 @@ bench_runnable** bench_runnable::create_runnables(bench_args args,
 
         ret = (bench_runnable**)malloc(sizeof(bench_runnable*)*args._ncpus);
         memset(ret, 0x0, sizeof(bench_runnable*)*args._ncpus);
-        bench_runnable::_location = malloc(sizeof(4*CACHE_LINE));
-        memset(bench_runnable::_location, 0x0, sizeof(4*CACHE_LINE));
+        bench_runnable::_location = malloc(4*CACHE_LINE);
+        memset(bench_runnable::_location, 0x0, 4*CACHE_LINE);
+        assert(*((uint64_t*)bench_runnable::_location) == 0);
         bench_runnable::_mutex = PTHREAD_MUTEX_INITIALIZER;
         
         total_cpus = numa_num_configured_cpus();
@@ -175,6 +176,7 @@ bench_runnable** bench_runnable::create_runnables(bench_args args,
                 ret[i]->_state = IDLE;
                 ret[i]->_latencies = NULL;
                 ret[i]->_iterations = 0;
+                ret[i]->run();
         }
         return ret;
 }
@@ -289,6 +291,7 @@ spinlock_runnable::spinlock_runnable(int cpu, void *location)
         : bench_runnable(cpu)
 {
         _location = (volatile uint64_t*)location;
+        assert(*_location == 0);
 }
 
 void spinlock_runnable::do_critical_section()

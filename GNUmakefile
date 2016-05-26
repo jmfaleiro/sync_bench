@@ -1,4 +1,4 @@
-CFLAGS=-O2 -g -Wall -Wextra -Werror -std=c++0x -Wno-sign-compare 
+CFLAGS=-O3 -g -Wall -Wextra -Werror -std=c++0x -Wno-sign-compare 
 LIBS=-lnuma -lpthread -lrt
 CXX=g++
 
