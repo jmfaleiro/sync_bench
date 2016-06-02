@@ -70,6 +70,7 @@ void bench::do_run(uint64_t iterations, uint64_t **latencies, double *throughput
         
         end_time = diff_time(end_time, start_time);
         elapsed_milli = end_time.tv_sec + (1.0*end_time.tv_nsec)/1000000000.0;
+        std::cout << elapsed_milli << "\n";
         *throughput = (1.0*iterations*_args._ncpus)/elapsed_milli;
 }
 
@@ -82,8 +83,12 @@ results bench::execute()
         latencies = (uint64_t**)malloc(sizeof(uint64_t*)*_args._ncpus);
         memset(latencies, 0x0, sizeof(uint64_t*)*_args._ncpus);
         
-        do_run(1000, latencies, &throughput);
-        do_run(100000, latencies, &throughput);
+        if (_args._ncpus > 80 && _args._type == MCS_LOCK) {
+                do_run(1000, latencies, &throughput);
+        } else {        
+                do_run(1000, latencies, &throughput);
+                do_run(100000, latencies, &throughput);
+        }
         ret._throughput = throughput;
         ret._latency = latencies;
         return ret;
@@ -118,9 +123,10 @@ bench_runnable::bench_runnable(int cpu) : runnable(cpu)
 
 void bench_runnable::critical_section()
 {
-        uint32_t i;
-        for (i = 0; i < _args._bench_args._spin_inside; ++i) 
-                single_work();
+        ONE();
+        //        uint32_t i;
+        //        for (i = 0; i < _args._bench_args._spin_inside; ++i) 
+        //                single_work();
 }
 
 bench_runnable** bench_runnable::create_runnables(bench_args args, 
@@ -236,12 +242,12 @@ void bench_runnable::do_iteration()
         signal_master();
 }
 
-void bench_runnable::do_spin(uint64_t duration)
+void bench_runnable::do_spin(__attribute__((unused)) uint64_t duration)
 {
-        uint64_t i;
-        
-        for (i = 0; i < duration; ++i) 
-                single_work();
+        DDDDDDDDDD_ONE();
+        //        uint64_t i;
+        //        for (i = 0; i < duration; ++i) 
+        //                single_work();
 }
 
 /* Runs on the master thread. Signals worker threads to start */
@@ -267,7 +273,7 @@ void bench_runnable::bench_iteration()
                 barrier();
                 
                 do_critical_section();
-
+                //                std::cout << "Done!\n";
                 barrier();
                 time_end = rdtsc();
                 barrier();

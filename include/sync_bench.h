@@ -5,6 +5,24 @@
 #include <mcs.h>
 #include <pthread.h>
 
+#define ONE() 			single_work()
+#define D_ONE()			ONE(); ONE()
+#define DD_ONE()		D_ONE(); 		D_ONE()
+#define DDD_ONE()		DD_ONE(); 		DD_ONE()
+#define DDDD_ONE()		DDD_ONE(); 		DDD_ONE()
+#define DDDDD_ONE() 		DDDD_ONE(); 		DDDD_ONE()
+#define DDDDDD_ONE()		DDDDD_ONE(); 		DDDDD_ONE()
+#define DDDDDDD_ONE()		DDDDDD_ONE(); 		DDDDDD_ONE()
+#define DDDDDDDD_ONE()  	DDDDDDD_ONE(); 		DDDDDDD_ONE()
+#define DDDDDDDDD_ONE()  	DDDDDDDD_ONE(); 	DDDDDDDD_ONE()
+#define DDDDDDDDDD_ONE()  	DDDDDDDDD_ONE(); 	DDDDDDDDD_ONE()
+#define DDDDDDDDDDD_ONE()  	DDDDDDDDDD_ONE(); 	DDDDDDDDDD_ONE()
+#define DDDDDDDDDDDD_ONE()  	DDDDDDDDDDD_ONE(); 	DDDDDDDDDDD_ONE()
+#define DDDDDDDDDDDDD_ONE()  	DDDDDDDDDDDD_ONE(); 	DDDDDDDDDDDD_ONE()
+#define DDDDDDDDDDDDDD_ONE()  	DDDDDDDDDDDDD_ONE(); 	DDDDDDDDDDDDD_ONE()
+#define DDDDDDDDDDDDDDD_ONE()  	DDDDDDDDDDDDDD_ONE(); 	DDDDDDDDDDDDDD_ONE()
+
+
 namespace sync_bench {
 
         enum bench_t {
