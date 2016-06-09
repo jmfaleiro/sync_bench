@@ -76,6 +76,7 @@ namespace sync_bench {
                 pthread_cond_t 		_local_cond;
                 volatile uint64_t	_state;
                 uint64_t 		*_latencies;
+                uint64_t 		_sz;
                 volatile uint64_t	_iterations;
                 
                 virtual void do_critical_section() = 0;
@@ -99,6 +100,7 @@ namespace sync_bench {
                 void start();
                 void kill();
                 uint64_t* get_latency();                
+                uint64_t get_exec();
         };
 
         class spinlock_runnable : public bench_runnable {
@@ -158,7 +160,8 @@ namespace sync_bench {
                 void do_run(uint64_t iterations, uint64_t **latencies, double *throughput);
                 void signal_runnables(uint64_t cmd);
                 void wait_runnables();
-
+                uint64_t count_exec();
+                
         public:
                 bench(bench_args args);
                 results execute();        

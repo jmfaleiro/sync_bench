@@ -1,6 +1,7 @@
 #include <util.h>
 #include <sync_bench.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 using namespace sync_bench;
 
@@ -41,8 +42,20 @@ void bench::wait_runnables()
         pthread_mutex_unlock(&_count_mutex);
 }
 
+uint64_t bench::count_exec()
+{
+        uint32_t i;
+        uint64_t exec;
+        
+        exec = 0;
+        for (i = 0; i < _args._ncpus; ++i) 
+                exec += _runnables[i]->get_exec();
+        return exec;
+}
+
 void bench::do_run(uint64_t iterations, uint64_t **latencies, double *throughput)
 {
+        uint64_t num_exec;
         uint32_t i;
         timespec start_time, end_time;
         double elapsed_milli;
@@ -52,14 +65,19 @@ void bench::do_run(uint64_t iterations, uint64_t **latencies, double *throughput
                 _runnables[i]->prepare(iterations);        
         wait_runnables();
 
+
         barrier();
         clock_gettime(CLOCK_REALTIME, &start_time);
         barrier();
 
+
         _count = 0;
         for (i = 0; i < _args._ncpus; ++i)
                 _runnables[i]->start();
-        wait_runnables();
+        //        wait_runnables();
+        sleep(30);
+        
+        num_exec = count_exec();
 
         barrier();
         clock_gettime(CLOCK_REALTIME, &end_time);
@@ -70,8 +88,7 @@ void bench::do_run(uint64_t iterations, uint64_t **latencies, double *throughput
         
         end_time = diff_time(end_time, start_time);
         elapsed_milli = end_time.tv_sec + (1.0*end_time.tv_nsec)/1000000000.0;
-        std::cout << elapsed_milli << "\n";
-        *throughput = (1.0*iterations*_args._ncpus)/elapsed_milli;
+        *throughput = (1.0*num_exec)/elapsed_milli;
 }
 
 results bench::execute()
@@ -86,7 +103,7 @@ results bench::execute()
         if (_args._ncpus > 80 && _args._type == MCS_LOCK) {
                 do_run(1000, latencies, &throughput);
         } else {        
-                do_run(1000, latencies, &throughput);
+                //                do_run(1000, latencies, &throughput);
                 do_run(100000, latencies, &throughput);
         }
         ret._throughput = throughput;
@@ -124,9 +141,11 @@ bench_runnable::bench_runnable(int cpu) : runnable(cpu)
 void bench_runnable::critical_section()
 {
         ONE();
-        //        uint32_t i;
-        //        for (i = 0; i < _args._bench_args._spin_inside; ++i) 
-        //                single_work();
+        /*
+        uint32_t i;
+        for (i = 0; i < _args._bench_args._spin_inside; ++i) 
+                single_work();
+        */
 }
 
 bench_runnable** bench_runnable::create_runnables(bench_args args, 
@@ -187,6 +206,16 @@ bench_runnable** bench_runnable::create_runnables(bench_args args,
         return ret;
 }
 
+uint64_t bench_runnable::get_exec()
+{
+        uint64_t ret;
+        
+        barrier();
+        ret = _iterations;
+        barrier();
+        return ret;
+}
+
 /* Runs on the master thread */
 void bench_runnable::prepare(uint64_t iterations)
 {
@@ -244,18 +273,18 @@ void bench_runnable::do_iteration()
 
 void bench_runnable::do_spin(__attribute__((unused)) uint64_t duration)
 {
-        DDDDDDDDDD_ONE();
-        //        uint64_t i;
-        //        for (i = 0; i < duration; ++i) 
-        //                single_work();
+        uint64_t i;
+        for (i = 0; i < duration; ++i) 
+                single_work();
 }
 
 /* Runs on the master thread. Signals worker threads to start */
 void bench_runnable::setup_iteration()
 {
         assert(_state == SETUP);
-        _latencies = (uint64_t*)malloc(sizeof(uint64_t)*_iterations);
-        memset(_latencies, 0x0, sizeof(uint64_t)*_iterations);
+        _sz = (1<<20);
+        _latencies = (uint64_t*)malloc(sizeof(uint64_t)*_sz);
+        memset(_latencies, 0x0, sizeof(uint64_t)*_sz);
         _state = READY;
 }
 
@@ -264,33 +293,38 @@ void bench_runnable::bench_iteration()
 {
         assert(_state == EXEC);
         uint64_t i, time_start, time_end;
-
-        for (i = 0; i < _iterations; ++i) {
+        
+        _iterations = 0;
+        i = 0;
+        while (true) {
                 do_spin(_args._bench_args._spin_outside);
 
                 barrier();
                 time_start = rdtsc();
                 barrier();
-                
+
                 do_critical_section();
-                //                std::cout << "Done!\n";
+
                 barrier();
                 time_end = rdtsc();
                 barrier();
-                _latencies[i] = time_end - time_start;
+                _latencies[i % _sz] = time_end - time_start;
+                i += 1;
+                fetch_and_increment(&_iterations);
         }
         xchgq(&_state, IDLE);
 }
 
 uint64_t* bench_runnable::get_latency()
 {
-        uint64_t *ret;
+        //        uint64_t *ret;
         
-        pthread_mutex_lock(&_local_mutex);
-        assert(_state == IDLE);
-        ret = _latencies;
-        pthread_mutex_unlock(&_local_mutex);
-        return ret;
+        return _latencies;
+        //        pthread_mutex_lock(&_local_mutex);
+        //        assert(_state == IDLE);
+        //        ret = _latencies;
+        //        pthread_mutex_unlock(&_local_mutex);
+        //        return ret;
 }
 
 spinlock_runnable::spinlock_runnable(int cpu, void *location) 
