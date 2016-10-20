@@ -73,14 +73,56 @@ inline bool try_lock(volatile uint64_t *word)
         return cmp_and_swap(word, 0, 1);
 }
 
+inline void delay_lock(volatile uint64_t *word, uint32_t cpu)
+{
+        uint32_t i, j, temp;
+        uint64_t value;
+        
+        while (true) {
+                barrier();
+                value = *word;
+                barrier();
+                if (value == 0) {
+                        temp = cpu/10;
+                        for (i = 0; i < temp; ++i) 
+                                for (j = 0; j < 600; ++j)
+                                        single_work();
+                        barrier();
+                        value = *word;
+                        barrier();
+                        if (value == 0 && cmp_and_swap(word, 0, 1))
+                                break;
+                }
+                /*
+                barrier();
+                value = *word;
+                barrier();
+                if (value == 0 && cmp_and_swap(word, 0, 1)) { //xchgq(word, 1) == 0)) {
+                        break;
+                }
+                */
+                //                for (i = 0; i < 500; ++i)
+                //                        single_work();
+        }
+        
+}
+
 // Spin lock implementation. XXX: Is test-n-test-n-set better?
 inline void lock(volatile uint64_t *word) 
 {
+        uint32_t i;
+        uint64_t value;
+        
         while (true) {
-                if ((*word == 0) && (xchgq(word, 1) == 0)) {
+                barrier();
+                value = *word;
+                barrier();
+                if (value == 0 && cmp_and_swap(word, 0, 1)) { //xchgq(word, 1) == 0)) {
                         break;
-                } 
-                do_pause();
+                }
+
+                //                for (i = 0; i < 500; ++i)
+                //                        single_work();
         }
 }
 
