@@ -165,6 +165,42 @@ namespace sync_bench {
                 pthread_runnable(int cpu, pthread_mutex_t *mutex);
         };
 
+        class xchgq_runnable : public bench_runnable {
+        private:
+                struct qnode {
+                        struct qnode 	*next;
+                };
+
+                qnode 			*_to_insert;
+                uint64_t 		_num_inserts;
+                volatile uint64_t 	_progress;
+                void 			*_loc;
+
+        protected:
+                uint32_t do_critical_section();
+                
+        public:
+                xchgq_runnable(int cpu, void *location, uint64_t num_inserts);
+        };
+
+        class cmpswap_runnable : public bench_runnable {
+        private:
+                struct qnode {
+                        struct qnode 	*next;
+                };
+
+                qnode 			*_to_insert;
+                uint64_t 		_num_inserts;
+                uint64_t	 	_progress;
+                void 			*_loc;
+
+        protected:
+                uint32_t do_critical_section();
+
+        public:
+                cmpswap_runnable(int cpu, void *location, uint64_t num_inserts);
+        };
+        
         class bench {
         private:        
                 bench_args 		_args;

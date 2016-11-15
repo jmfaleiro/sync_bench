@@ -347,6 +347,7 @@ fairness_result bench_runnable::get_fairness()
         fairness_result ret;
         ret._vals = _owned_slots;
         ret._iters = _iterations;
+        return ret;
 }
 
 latency_result bench_runnable::get_latency()
@@ -439,4 +440,59 @@ uint32_t mcs_runnable::do_critical_section()
         //        critical_section();
         mcs_mgr::unlock(_lock);
         return ret;
+}
+
+xchgq_runnable::xchgq_runnable(int cpu, void *location, uint64_t num_inserts)
+        : bench_runnable(cpu)
+{
+        _num_inserts = num_inserts;
+        _progress = 0;
+        _loc = location;
+        _to_insert = (qnode*)alloc_mem(sizeof(qnode)*num_inserts, cpu);
+        memset(_to_insert, 0x0, sizeof(qnode)*num_inserts);
+}
+
+uint32_t xchgq_runnable::do_critical_section()
+{
+        volatile uint64_t *tail;
+        qnode *to_add, *prev;
+        
+        tail = (volatile uint64_t*)_loc;
+        to_add = &_to_insert[_progress % _num_inserts];
+        to_add->next = NULL;
+        prev = (qnode*)xchgq(tail, (uint64_t)to_add);
+        xchgq((volatile uint64_t*)(&to_add->next), (uint64_t)prev);
+        _progress += 1;
+        return 0;
+}
+
+cmpswap_runnable::cmpswap_runnable(int cpu, void *location, uint64_t num_inserts)
+        : bench_runnable(cpu)
+{
+        _num_inserts = num_inserts;
+        _progress = 0;
+        _loc = location;
+        _to_insert = (qnode*)alloc_mem(sizeof(qnode)*num_inserts, cpu);
+        memset(_to_insert, 0x0, sizeof(qnode)*num_inserts);
+}
+
+uint32_t cmpswap_runnable::do_critical_section()
+{
+        volatile uint64_t *tail;
+        uint64_t temp;
+        qnode *to_add;
+
+        tail = (volatile uint64_t*)_loc;
+        to_add = &_to_insert[_progress % _num_inserts];
+        while (true) {
+                barrier();
+                temp = *tail;
+                to_add->next = (qnode*)temp;
+                barrier();
+
+                if (*tail == temp && cmp_and_swap(tail, temp, (uint64_t)to_add))
+                        break;
+        }
+        _progress += 1;
+        return 0;        
 }

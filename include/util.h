@@ -110,7 +110,6 @@ inline void delay_lock(volatile uint64_t *word, uint32_t cpu)
 // Spin lock implementation. XXX: Is test-n-test-n-set better?
 inline void lock(volatile uint64_t *word) 
 {
-        uint32_t i;
         uint64_t value;
         
         while (true) {

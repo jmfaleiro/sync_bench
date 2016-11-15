@@ -80,8 +80,10 @@ void write_fairness_cdf(std::vector<uint64_t> &results, const char *filename)
         std::sort(results.begin(), results.end());        
         diff = 1.0 / double(results.size());
         cur = 0.0;
-        for (i = 0; i < results.size(); ++i) 
+        for (i = 0; i < results.size(); ++i) {
                 result_file << cur << " " << results[i] << "\n";
+                cur += diff;
+        }
         result_file.close();
 }
 
@@ -89,7 +91,6 @@ void do_fairness(sync_bench::fairness_result *res, uint32_t nthreads)
 {
         std::vector<uint64_t> **grouped_numa, **seq, to_write;
         uint32_t i, j, ngroups;
-        double diff, cur;
         
         grouped_numa = fairness_by_numa(res, nthreads, &ngroups);
         seq = (std::vector<uint64_t>**)zmalloc(sizeof(std::vector<uint64_t>*)*(ngroups));
