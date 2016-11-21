@@ -347,6 +347,7 @@ fairness_result bench_runnable::get_fairness()
         fairness_result ret;
         ret._vals = _owned_slots;
         ret._iters = _iterations;
+        return ret;
 }
 
 latency_result bench_runnable::get_latency()

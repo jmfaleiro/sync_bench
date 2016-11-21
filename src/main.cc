@@ -4,6 +4,7 @@
 #include <fstream>
 #include <algorithm>
 #include <vector>
+#include <log_latency.h>
 
 bool LATENCY_EXP;
 
@@ -80,8 +81,10 @@ void write_fairness_cdf(std::vector<uint64_t> &results, const char *filename)
         std::sort(results.begin(), results.end());        
         diff = 1.0 / double(results.size());
         cur = 0.0;
-        for (i = 0; i < results.size(); ++i) 
+        for (i = 0; i < results.size(); ++i) {
                 result_file << cur << " " << results[i] << "\n";
+                cur += diff;
+        }
         result_file.close();
 }
 
@@ -89,7 +92,6 @@ void do_fairness(sync_bench::fairness_result *res, uint32_t nthreads)
 {
         std::vector<uint64_t> **grouped_numa, **seq, to_write;
         uint32_t i, j, ngroups;
-        double diff, cur;
         
         grouped_numa = fairness_by_numa(res, nthreads, &ngroups);
         seq = (std::vector<uint64_t>**)zmalloc(sizeof(std::vector<uint64_t>*)*(ngroups));
@@ -191,13 +193,11 @@ sync_bench::latency_result avg_latency(uint32_t ncpus, sync_bench::latency_resul
         return ret_latency;
 }
 
-
-
 /* 
  * For now, arg1 is the experiment type, arg2 is #threads, arg3 is 
  * spin_inside, and arg4 is spin_outside.  
  */   
-int main(int argc, char **argv)
+void do_sync_bench(int argc, char **argv)
 {
         assert(argc == 6);
 
@@ -207,9 +207,10 @@ int main(int argc, char **argv)
         sync_bench::latency_result latency;
         
         args._type = (sync_bench::bench_t)atoi(argv[1]);
+        
         assert(args._type >= sync_bench::SPINLOCK && 
                args._type <= sync_bench::PTHREAD_LOCK);
-        
+
         args._ncpus = (uint32_t)atoi(argv[2]);        
         args._spin_inside = (uint64_t)atoi(argv[3]);
         args._spin_outside = (uint64_t)atoi(argv[4]);
@@ -227,5 +228,45 @@ int main(int argc, char **argv)
                       args._spin_outside,
                       result._throughput,
                       latency);
+}
+
+void write_logging_results(uint64_t txn_length, uint64_t log_latency, 
+                           double throughput)
+{
+        std::ofstream result_file;
+        result_file.open("logging.txt", std::ios::app | std::ios::out);
+        result_file << "logging ";        
+        result_file << "txn_length:" << txn_length << " ";
+        result_file << "log_latency:" << log_latency << " ";
+        result_file << "throughput:" << throughput << "\n";
+        result_file.close();
+}
+
+void do_logging(int argc, char **argv)
+{
+        assert(argc == 4);
+        
+        uint64_t txn_length, log_latency;
+        double throughput;
+        txn_length = (uint64_t)atoi(argv[2]);
+        log_latency = (uint64_t)atoi(argv[3]);
+        
+        throughput = log_bench::do_benchmark(txn_length, log_latency);
+        write_logging_results(txn_length, log_latency, throughput);
+}
+
+int main(int argc, char **argv)
+{
+        assert(argc >= 2);
+        sync_bench::bench_t type;
+        type = (sync_bench::bench_t)atoi(argv[1]);
+        
+        if (type >= sync_bench::SPINLOCK && 
+            type <= sync_bench::PTHREAD_LOCK) 
+                do_sync_bench(argc, argv);
+        else if (type == sync_bench::LOGGING) 
+                do_logging(argc, argv);
+        else 
+                assert(false);
         return 0;
 }

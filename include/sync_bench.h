@@ -30,6 +30,7 @@ namespace sync_bench {
                 LATCH_FREE = 1,
                 MCS_LOCK = 2,
                 PTHREAD_LOCK = 3,
+                LOGGING = 4,
         };
 
         struct bench_args {
