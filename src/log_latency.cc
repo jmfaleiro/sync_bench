@@ -50,6 +50,7 @@ log_bench::log_bench(int cpu, uint64_t txn_length,
         _txn_counter = 0;
         _txn_length = txn_length;
         _log_latency = log_latency;
+        _cpu = cpu;
 }
 
 /* Simulate a transaction which executes for "cycles" */

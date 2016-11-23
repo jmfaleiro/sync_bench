@@ -10,6 +10,7 @@ class log_bench : public runnable {
         volatile uint64_t 		_txn_counter;
         uint64_t 			_txn_length;
         uint64_t 			_log_latency;
+        int 				_cpu;
         
         void do_thread_benchmark();
         void log();
